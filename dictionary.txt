@@ -1,0 +1,9 @@
+hallo=hello
+meer=more
+veel=many
+interessante=interesting
+nederlands=dutch
+engels=english
+heel=very
+vertalen=translate
+goedemorgen=good morning
