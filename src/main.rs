@@ -1,12 +1,10 @@
-use std::{env, fs::{OpenOptions, File}, io::{Seek, Write, Read, stdin, stdout}, io::SeekFrom};
+use std::{fs::{OpenOptions, File}, io::{Seek, Write, Read, stdin, stdout}, io::SeekFrom};
+
 
 use rand::Rng;
 //use regex::Regex;
 
 fn main() {
-    const NEW_LINE: u8 = '\n' as u8;
-    const SPACE: u8 = ' ' as u8;
-
     println!("Personalised Dictionary\n");
 
     let mut file = OpenOptions::new()
@@ -17,13 +15,15 @@ fn main() {
         .unwrap();
     
     let mut file_buff: Vec<u8> = Vec::new(); 
-    file.seek(SeekFrom::Start(file_buff.len() as u64)).unwrap();
-    file.read_to_end(&mut file_buff).unwrap(); 
     
     file_buff.pop();
 
 
-    loop {    
+    loop {
+        file_buff.clear();
+        file.seek(SeekFrom::Start(file_buff.len() as u64)).unwrap();
+        file.read_to_end(&mut file_buff).unwrap();
+        
         println!("[r: revise; a: add; e: edit; q: quit]");
         let mut mode = String::new();
         let _ = stdin().read_line(&mut mode);
@@ -32,7 +32,7 @@ fn main() {
         match mode.as_str() {
             "r" => revision_mode(&file_buff),
             "a" => add_mode(&mut file),
-            "e" => edit_mode(&file_buff, &file),
+            "e" => edit_mode(&file_buff, &mut file),
             "q" => return,
             _ => println!("unrecognised command")
         }
@@ -40,13 +40,15 @@ fn main() {
     
 }
 
-fn edit_mode(buf: &Vec<u8>, file: &File) {
+
+fn edit_mode(buf: &Vec<u8>, file: &mut File) {
     println!("Searching in english? [y/n]");
     let mut input = String::new();
-    while !(matches!(input.as_str(), "y\n" | "n\n")) {
+    while !(matches!(input.as_str(), "y" | "n")) {
         stdin().read_line(&mut input).unwrap();   
+        input = input.replace("\n", "").replace(" ", "");
     }
-    let english_search = input == "y\n";
+    let english_search = input == "y";
     input.clear();
     print!("search: ");
     stdout().flush().unwrap();
@@ -55,23 +57,33 @@ fn edit_mode(buf: &Vec<u8>, file: &File) {
 
     let file_str: String = String::from_utf8(buf.to_owned())
         .unwrap();
-    let word_pairs: Vec<&str> = file_str.split("\n")
+    let mut word_pairs: Vec<Vec<&str>> = file_str
+        .split("\n")
+        .map(|x| x.split('=').collect())
         .collect();
+    word_pairs.pop();
 
     input.pop();
 
     let mut special_lines: Vec<usize> = Vec::new();
 
+    let mut j = 0;
+
     for (i, val) in word_pairs.iter().enumerate() {
-        let pair: Vec<&str> = val.split("=").collect();
-        let preferred_one = pair[english_search as usize];
+        let preferred_one = val[english_search as usize];
     
         if preferred_one.find(&input) != None {
-            println!("Entry {}) {}", i+1, preferred_one);
+            j += 1;
+            println!("{}) {}", j, preferred_one);
             special_lines.push(i);
         }
     }
+    if special_lines.is_empty() {
+        println!("Couldn't find anything with that, sorry");
+        return;
+    }
     println!("Select the desired entry [c: cancel]");
+    let mut chosen_i;
     loop {
         input.clear();
         stdin().read_line(&mut input).unwrap();
@@ -83,8 +95,37 @@ fn edit_mode(buf: &Vec<u8>, file: &File) {
             println!("Please just give me a NUMBER");
             continue;
         }
+        chosen_i = input.parse::<usize>().unwrap();
+        if chosen_i > j {
+            println!("please select an appropriate number");
+            continue;
+        }
         break;
     }
+    let old_word_pair = format!("{}={}", 
+                                word_pairs[special_lines[chosen_i-1]][0],
+                                word_pairs[special_lines[chosen_i-1]][1]); 
+
+
+    let mut updated_word_pair = String::new();
+    print!("Type the updated word (It was {}):", word_pairs[special_lines[chosen_i-1]][0]);
+    stdout().flush().unwrap();
+    stdin().read_line(&mut updated_word_pair).unwrap();
+
+    print!("Type the updated translation (It was {}):", word_pairs[special_lines[chosen_i-1]][1]);
+    stdout().flush().unwrap();
+    updated_word_pair.push('=');
+    stdin().read_line(&mut updated_word_pair).unwrap();   
+    let tmp: Vec<&[u8]> = file_str
+        .split(old_word_pair.as_str())
+        .map(|x| x.as_bytes())
+        .collect();
+
+    updated_word_pair = updated_word_pair.replace("\n", "");
+
+    file.set_len(tmp[0].len() as u64).unwrap();
+    file.write_all(updated_word_pair.as_bytes()).unwrap();
+    file.write_all(tmp[1]).unwrap();
 }
 
 fn add_mode(file: &mut File) {
