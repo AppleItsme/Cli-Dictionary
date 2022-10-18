@@ -1,5 +1,5 @@
 [package]
-name = "dutch_english_dictionary"
+name = "cli-dictionary"
 version = "0.1.0"
 edition = "2021"
 
