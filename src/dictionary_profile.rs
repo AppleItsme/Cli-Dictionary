@@ -32,7 +32,7 @@ pub fn startup() -> Option<String> {
         for (i, val) in files.iter().enumerate() {
         println!("{}) {}", i+1, val);
         }
-        println!("[a: add a new dictionary; 0-{}: pick the dictionary; d: delete; q: quit]", files.len());
+        println!("[a: Add a new dictionary; 0-{}: Pick the dictionary; d: Delete; q: Quit]", files.len());
         
         let mut option = String::new();
         loop {

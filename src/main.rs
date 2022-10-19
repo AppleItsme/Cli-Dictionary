@@ -4,7 +4,8 @@ use rand::{Rng, thread_rng};
 
 fn main() {
 
-    println!("Personalised Dictionary\n");
+    println!("Personal CLI Dictionary");
+    println!("\tMade by The Seg Fault (on yt)\n");
 
     let path = startup(); 
     let mut dictionary: SsfInstance;
@@ -15,7 +16,7 @@ fn main() {
     
 
     loop {
-        println!("[r: revise; a: add; e: edit; q: quit]");
+        println!("[r: Revise; a: Add; e: Edit; q: Quit]");
         let mut mode = String::new();
         let _ = stdin().read_line(&mut mode);
         mode = clean_string(mode);
@@ -25,7 +26,7 @@ fn main() {
             "a" => add_mode(&mut dictionary),
             "e" => edit_mode(&mut dictionary),
             "q" => return,
-            _ => println!("unrecognised command")
+            _ => println!("Unrecognised command")
         }
     }
     
@@ -33,7 +34,7 @@ fn main() {
 
 
 fn edit_mode(ssf_instance: &mut SsfInstance) {
-    println!("Searching in english? [y/n]");
+    println!("Searching in English? [y/n]");
     let mut input = String::new();
     while !(matches!(input.as_str(), "y" | "n")) {
         stdin().read_line(&mut input).unwrap();   
@@ -63,7 +64,7 @@ fn edit_mode(ssf_instance: &mut SsfInstance) {
         println!("Couldn't find anything with that, sorry");
         return;
     }
-    println!("Select the desired entry [c: cancel]");
+    println!("Select the desired entry [c: Cancel]");
     let mut chosen_i;
     loop {
         input.clear();
@@ -78,7 +79,7 @@ fn edit_mode(ssf_instance: &mut SsfInstance) {
         }
         chosen_i = input.parse::<usize>().unwrap();
         if chosen_i > j {
-            println!("please select an appropriate number");
+            println!("Please select an appropriate number");
             continue;
         }
         break;
@@ -132,7 +133,7 @@ fn revision_mode(ssf_instance: &mut SsfInstance) {
 
     let chosen_pair = &entries[thread_rng().gen_range(0..entries.len())];
 
-    println!("Translate: {}; [s to show the answer]", chosen_pair[0]);
+    println!("Translate: {}; [s: Show the answer]", chosen_pair[0]);
     let mut submitted_answer = String::new();
     while submitted_answer != "s" && submitted_answer != chosen_pair[1] {
         submitted_answer.clear();
