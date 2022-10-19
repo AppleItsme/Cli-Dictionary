@@ -1,4 +1,4 @@
-use std::{fs::{self, create_dir_all, remove_file}, env::consts::OS, io::{stdin, stdout, Write}, process::Command};
+use std::{fs::{self, create_dir_all}, env::consts::OS, io::{stdin, stdout, Write}, process::Command};
 
 use home::home_dir;
 
