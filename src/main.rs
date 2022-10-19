@@ -27,7 +27,7 @@ fn main() {
         println!("[r: revise; a: add; e: edit; q: quit]");
         let mut mode = String::new();
         let _ = stdin().read_line(&mut mode);
-        mode.pop();
+        mode = clean_string(mode);
     
         match mode.as_str() {
             "r" => revision_mode(&file_buff),
@@ -41,19 +41,42 @@ fn main() {
 }
 
 
+
+
+
+fn clean_string(input: String) -> String {
+    input
+        .replace(" ", "")
+        .replace("\n", "")
+}
+
+fn remove_whitespace_suffix(input: &mut String) {
+    let has_new_line = input.ends_with('\n');
+    if has_new_line {
+        input.pop();
+    }
+    while input.ends_with(' ') {
+        input.pop();
+    }
+    if has_new_line {
+        input.push('\n');
+    }
+}
+
 fn edit_mode(buf: &Vec<u8>, file: &mut File) {
     println!("Searching in english? [y/n]");
     let mut input = String::new();
     while !(matches!(input.as_str(), "y" | "n")) {
         stdin().read_line(&mut input).unwrap();   
-        input = input.replace("\n", "").replace(" ", "");
+        input = clean_string(input);
     }
     let english_search = input == "y";
     input.clear();
     print!("search: ");
     stdout().flush().unwrap();
     stdin().read_line(&mut input).unwrap();
-
+    input.pop();
+    remove_whitespace_suffix(&mut input);
 
     let file_str: String = String::from_utf8(buf.to_owned())
         .unwrap();
@@ -63,7 +86,6 @@ fn edit_mode(buf: &Vec<u8>, file: &mut File) {
         .collect();
     word_pairs.pop();
 
-    input.pop();
 
     let mut special_lines: Vec<usize> = Vec::new();
 
@@ -111,11 +133,15 @@ fn edit_mode(buf: &Vec<u8>, file: &mut File) {
     print!("Type the updated word (It was {}):", word_pairs[special_lines[chosen_i-1]][0]);
     stdout().flush().unwrap();
     stdin().read_line(&mut updated_word_pair).unwrap();
+    remove_whitespace_suffix(&mut updated_word_pair);
 
     print!("Type the updated translation (It was {}):", word_pairs[special_lines[chosen_i-1]][1]);
     stdout().flush().unwrap();
     updated_word_pair.push('=');
-    stdin().read_line(&mut updated_word_pair).unwrap();   
+    stdin().read_line(&mut updated_word_pair).unwrap();  
+
+    remove_whitespace_suffix(&mut updated_word_pair);
+
     let tmp: Vec<&[u8]> = file_str
         .split(old_word_pair.as_str())
         .map(|x| x.as_bytes())
@@ -134,10 +160,16 @@ fn add_mode(file: &mut File) {
     println!("Type the word to translate:");
     stdin().read_line(&mut word_pair).unwrap();
     word_pair = word_pair.replace("\n", "");
+
+    remove_whitespace_suffix(&mut word_pair);
+
     word_pair.push('=');
     println!("Now the english version:");
     stdin().read_line(&mut word_pair).unwrap();
+   
+    remove_whitespace_suffix(&mut word_pair);
     
+
     let buf = word_pair.into_bytes();
     file.write_all(&buf).unwrap();
 }
@@ -158,6 +190,7 @@ fn revision_mode(file_buffer: &Vec<u8>) {
         submitted_answer.clear();
         let _b1 = stdin().read_line(&mut submitted_answer);
         submitted_answer = submitted_answer.replace("\n", "");
+        remove_whitespace_suffix(&mut submitted_answer);
     }
     if submitted_answer == chosen_pair[1] {
         println!("Good job!");
