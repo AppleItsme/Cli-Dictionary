@@ -1,38 +1,29 @@
-use std::{fs::{OpenOptions, File}, io::{Seek, Write, Read, stdin, stdout}, io::SeekFrom};
-
-
-use rand::Rng;
-//use regex::Regex;
+use std::io::{Write, stdin, stdout};
+use cli_dictionary::{ssf_format::SsfInstance, dictionary_profile::startup, clean_string, remove_whitespace_suffix};
+use rand::{Rng, thread_rng};
 
 fn main() {
+
     println!("Personalised Dictionary\n");
 
-    let mut file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open("./dictionary.txt")
-        .unwrap();
+    let path = startup(); 
+    let mut dictionary: SsfInstance;
+    match path {
+        Some(v) => dictionary = SsfInstance::new(&v),
+        None => return,
+    }
     
-    let mut file_buff: Vec<u8> = Vec::new(); 
-    
-    file_buff.pop();
-
 
     loop {
-        file_buff.clear();
-        file.seek(SeekFrom::Start(file_buff.len() as u64)).unwrap();
-        file.read_to_end(&mut file_buff).unwrap();
-        
         println!("[r: revise; a: add; e: edit; q: quit]");
         let mut mode = String::new();
         let _ = stdin().read_line(&mut mode);
         mode = clean_string(mode);
     
         match mode.as_str() {
-            "r" => revision_mode(&file_buff),
-            "a" => add_mode(&mut file),
-            "e" => edit_mode(&file_buff, &mut file),
+            "r" => revision_mode(&mut dictionary),
+            "a" => add_mode(&mut dictionary),
+            "e" => edit_mode(&mut dictionary),
             "q" => return,
             _ => println!("unrecognised command")
         }
@@ -41,29 +32,7 @@ fn main() {
 }
 
 
-
-
-
-fn clean_string(input: String) -> String {
-    input
-        .replace(" ", "")
-        .replace("\n", "")
-}
-
-fn remove_whitespace_suffix(input: &mut String) {
-    let has_new_line = input.ends_with('\n');
-    if has_new_line {
-        input.pop();
-    }
-    while input.ends_with(' ') {
-        input.pop();
-    }
-    if has_new_line {
-        input.push('\n');
-    }
-}
-
-fn edit_mode(buf: &Vec<u8>, file: &mut File) {
+fn edit_mode(ssf_instance: &mut SsfInstance) {
     println!("Searching in english? [y/n]");
     let mut input = String::new();
     while !(matches!(input.as_str(), "y" | "n")) {
@@ -75,24 +44,14 @@ fn edit_mode(buf: &Vec<u8>, file: &mut File) {
     print!("search: ");
     stdout().flush().unwrap();
     stdin().read_line(&mut input).unwrap();
-    input.pop();
-    remove_whitespace_suffix(&mut input);
+    input = remove_whitespace_suffix(input);
 
-    let file_str: String = String::from_utf8(buf.to_owned())
-        .unwrap();
-    let mut word_pairs: Vec<Vec<&str>> = file_str
-        .split("\n")
-        .map(|x| x.split('=').collect())
-        .collect();
-    word_pairs.pop();
-
-
+    let word_pairs = ssf_instance.parse();
     let mut special_lines: Vec<usize> = Vec::new();
-
     let mut j = 0;
 
     for (i, val) in word_pairs.iter().enumerate() {
-        let preferred_one = val[english_search as usize];
+        let preferred_one = &val[english_search as usize];
     
         if preferred_one.find(&input) != None {
             j += 1;
@@ -124,73 +83,61 @@ fn edit_mode(buf: &Vec<u8>, file: &mut File) {
         }
         break;
     }
-    let old_word_pair = format!("{}={}", 
-                                word_pairs[special_lines[chosen_i-1]][0],
-                                word_pairs[special_lines[chosen_i-1]][1]); 
+    let old_word_pair = word_pairs[special_lines[chosen_i-1]].to_owned();
 
 
-    let mut updated_word_pair = String::new();
-    print!("Type the updated word (It was {}):", word_pairs[special_lines[chosen_i-1]][0]);
+    let mut updated_word_pair: Vec<String> = vec![String::new(), String::new()];
+    print!("Type the updated word (It was {}):", old_word_pair[0]);
     stdout().flush().unwrap();
-    stdin().read_line(&mut updated_word_pair).unwrap();
-    remove_whitespace_suffix(&mut updated_word_pair);
+    stdin().read_line(&mut updated_word_pair[0]).unwrap();
 
-    print!("Type the updated translation (It was {}):", word_pairs[special_lines[chosen_i-1]][1]);
+    print!("Type the updated translation (It was {}):", old_word_pair[1]);
     stdout().flush().unwrap();
-    updated_word_pair.push('=');
-    stdin().read_line(&mut updated_word_pair).unwrap();  
+    stdin().read_line(&mut updated_word_pair[1]).unwrap();  
 
-    remove_whitespace_suffix(&mut updated_word_pair);
-
-    let tmp: Vec<&[u8]> = file_str
-        .split(old_word_pair.as_str())
-        .map(|x| x.as_bytes())
+    updated_word_pair = updated_word_pair.iter()
+        .map(|x| remove_whitespace_suffix(x.to_owned()))
         .collect();
+    updated_word_pair[1].push('\n');
 
-    updated_word_pair = updated_word_pair.replace("\n", "");
-
-    file.set_len(tmp[0].len() as u64).unwrap();
-    file.write_all(updated_word_pair.as_bytes()).unwrap();
-    file.write_all(tmp[1]).unwrap();
+    ssf_instance.replace_entry(old_word_pair, updated_word_pair);
 }
 
-fn add_mode(file: &mut File) {
-    let mut word_pair = String::new();
+fn add_mode(ssf_instance: &mut SsfInstance) {
+    let mut word_pair: Vec<String> = vec![String::new(), String::new()];
 
     println!("Type the word to translate:");
-    stdin().read_line(&mut word_pair).unwrap();
-    word_pair = word_pair.replace("\n", "");
+    stdin().read_line(&mut word_pair[0]).unwrap();
 
-    remove_whitespace_suffix(&mut word_pair);
-
-    word_pair.push('=');
     println!("Now the english version:");
-    stdin().read_line(&mut word_pair).unwrap();
-   
-    remove_whitespace_suffix(&mut word_pair);
-    
+    stdin().read_line(&mut word_pair[1]).unwrap();
 
-    let buf = word_pair.into_bytes();
-    file.write_all(&buf).unwrap();
+    word_pair = word_pair.iter()
+        .map(|x| remove_whitespace_suffix(x.to_owned()))
+        .collect();
+    word_pair[1].push('\n');
+
+    ssf_instance.new_entry(word_pair);
 }
 
-fn revision_mode(file_buffer: &Vec<u8>) {
-    let text = String::from_utf8(file_buffer.to_owned()).unwrap();
-    let lines: Vec<&str> = text
-        .as_str()
-        .split('\n')
-        .collect();
-    let chosen_pair: Vec<&str> = lines[rand::thread_rng().gen_range(0..lines.len())]
-        .split("=")
-        .collect();
+
+fn revision_mode(ssf_instance: &mut SsfInstance) {
+    let entries = ssf_instance.parse();
     
+    if entries.len() == 0 {
+        println!("No words are found! Let's add one!");
+        add_mode(ssf_instance);
+        return;
+    }
+
+    let chosen_pair = &entries[thread_rng().gen_range(0..entries.len())];
+
     println!("Translate: {}; [s to show the answer]", chosen_pair[0]);
     let mut submitted_answer = String::new();
     while submitted_answer != "s" && submitted_answer != chosen_pair[1] {
         submitted_answer.clear();
         let _b1 = stdin().read_line(&mut submitted_answer);
-        submitted_answer = submitted_answer.replace("\n", "");
-        remove_whitespace_suffix(&mut submitted_answer);
+        submitted_answer = remove_whitespace_suffix(submitted_answer);
     }
     if submitted_answer == chosen_pair[1] {
         println!("Good job!");
