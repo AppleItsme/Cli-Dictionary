@@ -1,8 +1,13 @@
-use std::{fs::{self, create_dir_all}, env::consts::OS, io::{stdin, stdout, Write}, process::Command};
+use std::{fs::{self, create_dir_all, remove_file}, env::consts::OS, io::{stdin, stdout, Write}, process::Command};
 
 use home::home_dir;
 
 use crate::clean_string;
+
+pub const NEWLINE: &'static str = match cfg!(windows) {
+    true => "\r\n",
+    false => "\n"
+};
 
 pub fn startup() -> Option<String> {
     let slash = match OS {
@@ -27,7 +32,7 @@ pub fn startup() -> Option<String> {
                          )
                 .replace(&path_with_slash, "")
                 )
-        .filter(|x| x.ends_with(".ssf"))
+        .filter(|x| x.ends_with(".sff"))
         .collect();
         for (i, val) in files.iter().enumerate() {
         println!("{}) {}", i+1, val);
@@ -50,13 +55,10 @@ pub fn startup() -> Option<String> {
                 index = clean_string(index);
                 if let Ok(n) = index.parse::<usize>() {
                     if cfg!(windows) {
-                        Command::new("del")
-                            .arg(format!("\"{}{}{}\"", path, slash, files[n-1]))
-                            .spawn()
-                            .unwrap();
+                        remove_file(format!("{}{}", path_with_slash, files[n-1])).unwrap();
                     } else {
                         Command::new("rm")
-                            .arg(format!("{}{}{}", path, slash, files[n-1]))
+                            .arg(format!("{}{}", path_with_slash, files[n-1]))
                             .spawn()
                             .unwrap();
                     }
@@ -75,7 +77,8 @@ pub fn startup() -> Option<String> {
                 stdin().read_line(&mut name).unwrap();
                 name = clean_string(name);
             }
-            return Some(format!("{}{}{}.ssf", path, slash, name));
+            return Some(format!("{}{}.sff", path_with_slash, name));
+            
         } else if option.chars().all(char::is_numeric) {
             let index = option.parse::<usize>().unwrap()-1;
             if index > files.len() {

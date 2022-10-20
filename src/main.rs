@@ -1,20 +1,17 @@
 use std::io::{Write, stdin, stdout};
-use cli_dictionary::{ssf_format::SsfInstance, dictionary_profile::startup, clean_string, remove_whitespace_suffix};
+use cli_dictionary::{sff_format::SsfInstance, dictionary_profile::{startup, NEWLINE}, clean_string, remove_whitespace_suffix};
 use rand::{Rng, thread_rng};
 
 fn main() {
-
     println!("Personal CLI Dictionary");
-    println!("\tMade by The Seg Fault (on yt)\n");
+    println!("\tMade by The Seg Fault (on yt){}", NEWLINE);
 
     let path = startup(); 
-    let mut dictionary: SsfInstance;
-    match path {
-        Some(v) => dictionary = SsfInstance::new(&v),
+    let mut dictionary = match path {
+        Some(v) => SsfInstance::new(&v),
         None => return,
-    }
+    };
     
-
     loop {
         println!("[r: Revise; a: Add; e: Edit; q: Quit]");
         let mut mode = String::new();
@@ -48,6 +45,12 @@ fn edit_mode(ssf_instance: &mut SsfInstance) {
     input = remove_whitespace_suffix(input);
 
     let word_pairs = ssf_instance.parse();
+    println!("words: {:?}", word_pairs);
+    if word_pairs.len() == 0 {
+        println!("You don't seem to have any words. Let's add some!");
+        add_mode(ssf_instance);
+        return;
+    }
     let mut special_lines: Vec<usize> = Vec::new();
     let mut j = 0;
 
@@ -70,7 +73,7 @@ fn edit_mode(ssf_instance: &mut SsfInstance) {
         input.clear();
         stdin().read_line(&mut input).unwrap();
 
-        input.pop();
+        input = clean_string(input);
         if input.as_str() == "c" {
             return;
         } else if !input.chars().all(char::is_numeric) {
@@ -99,7 +102,6 @@ fn edit_mode(ssf_instance: &mut SsfInstance) {
     updated_word_pair = updated_word_pair.iter()
         .map(|x| remove_whitespace_suffix(x.to_owned()))
         .collect();
-    updated_word_pair[1].push('\n');
 
     ssf_instance.replace_entry(old_word_pair, updated_word_pair);
 }
@@ -116,7 +118,7 @@ fn add_mode(ssf_instance: &mut SsfInstance) {
     word_pair = word_pair.iter()
         .map(|x| remove_whitespace_suffix(x.to_owned()))
         .collect();
-    word_pair[1].push('\n');
+    word_pair[1] += NEWLINE;
 
     ssf_instance.new_entry(word_pair);
 }
@@ -144,5 +146,5 @@ fn revision_mode(ssf_instance: &mut SsfInstance) {
         println!("Good job!");
         return;
     }
-    println!("The answer is: {}", chosen_pair[1]);
+    println!("The answer is: '{}'", chosen_pair[1]);
 }
