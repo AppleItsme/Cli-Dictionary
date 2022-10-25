@@ -3,7 +3,6 @@ use std::{fs::{File, OpenOptions}, io::{Seek, SeekFrom, Read, Write}};
 use crate::dictionary_profile::NEWLINE;
 
 pub struct SsfInstance {
-    byte_buf: Vec<u8>,
     string_buf: String,
     file: File,
     path: String
@@ -24,19 +23,17 @@ impl SsfInstance {
         }
 
         let mut byte_buf: Vec<u8> = Vec::new();
-        let mut string_buf = String::new();
         if let Err(e) = file.seek(SeekFrom::Start(0)) {
             panic!("Error while seeking: {}", e);
         }
         if let Err(e) = file.read_to_end(&mut byte_buf) {
             panic!("Could not read the file: {}", e);
         }
-        match String::from_utf8(byte_buf.to_owned()) {
-            Ok(v) => string_buf = v,
+        let string_buf = match String::from_utf8(byte_buf.to_owned()) {
+            Ok(v) => v,
             Err(e) => panic!("Wow the file is corrupted.\n{}", e)
-        }
+        };
         Self {
-            byte_buf,
             string_buf,
             file,
             path: String::from(path)

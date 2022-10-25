@@ -45,7 +45,6 @@ fn edit_mode(ssf_instance: &mut SsfInstance) {
     input = remove_whitespace_suffix(input);
 
     let word_pairs = ssf_instance.parse();
-    println!("words: {:?}", word_pairs);
     if word_pairs.len() == 0 {
         println!("You don't seem to have any words. Let's add some!");
         add_mode(ssf_instance);
