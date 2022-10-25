@@ -40,6 +40,7 @@ pub fn startup() -> Option<String> {
         println!("[a: Add a new dictionary; 0-{}: Pick the dictionary; d: Delete; q: Quit]", files.len());
         
         let mut option = String::new();
+        'main_loop:
         loop {
         option.clear();
         stdin().read_line(&mut option).unwrap();
@@ -81,9 +82,9 @@ pub fn startup() -> Option<String> {
             
         } else if option.chars().all(char::is_numeric) {
             let index = option.parse::<usize>().unwrap()-1;
-            if index > files.len() {
+            if index >= files.len() {
                 println!("Enter a number within the existing bounds please");
-                continue;
+                continue 'main_loop;
             }
             return Some(files[index].to_owned());
         }
